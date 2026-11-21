@@ -358,13 +358,35 @@ test("CLI: execution list → empty result", () => {
   assert.match(r.stdout, /No executions found/);
 });
 
-test("CLI: execution list → limit passed as query param", () => {
-  const r = run(["execution", "list"], {
+test("CLI: execution list → limit defaults to 100 and honours positional argument", () => {
+  const defaultRes = run(["execution", "list"], {
     responses: [
       { match: "/executions?limit=100", status: 200, body: { executions: [] } },
     ],
   });
-  assert.equal(r.code, 0);
+  assert.equal(defaultRes.code, 0);
+
+  const customRes = run(["execution", "list", "10"], {
+    responses: [
+      { match: "/executions?limit=10", status: 200, body: { executions: [] } },
+    ],
+  });
+  assert.equal(customRes.code, 0);
+
+  const minRes = run(["execution", "list", "1"], {
+    responses: [
+      { match: "/executions?limit=1", status: 200, body: { executions: [] } },
+    ],
+  });
+  assert.equal(minRes.code, 0);
+});
+
+test("CLI: execution list → rejects invalid or out-of-range limit with usage", () => {
+  for (const bad of ["abc", "0", "101", "-5", "10.5"]) {
+    const r = run(["execution", "list", bad], { responses: [] });
+    assert.equal(r.code, 1, `expected exit 1 for limit=${bad}`);
+    assert.match(r.stderr, /Usage: 4evergent execution list/);
+  }
 });
 
 test("CLI: execution list → API error → exit 1", () => {
